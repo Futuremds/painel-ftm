@@ -322,7 +322,7 @@ const Dashboard = () => {
   const totalPages = Math.ceil(filteredSites.length / rowsPerPage);
   const paginatedSites = filteredSites.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
-  
+  return (
     <Box sx={{ p: 3, background: '#111827', minHeight: '100vh' }}>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ mb: 1, fontWeight: 600, color: '#fff' }}>
@@ -508,7 +508,7 @@ const Dashboard = () => {
                           </TableCell>
                           <TableCell sx={{ color: '#9CA3AF' }}>{new Date(site.dataCriacao || site.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell sx={{ color: '#9CA3AF' }}>{site.updatedAt ? new Date(site.updatedAt).toLocaleDateString() : '-'}</TableCell>
-                          <TableCell sx={{ color: '#9CA3AF' }}></TableCell>
+                          <TableCell sx={{ color: '#9CA3AF' }}>{`${site.name}.painelftm.com.br`}</TableCell>
                           <TableCell>
                             <Tooltip title="Abrir site" arrow>
                               <IconButton size="small" onClick={() => handleViewSite(site)} sx={{ color: '#7C3AED' }}>
@@ -516,7 +516,7 @@ const Dashboard = () => {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Copiar link" arrow>
-                              <IconButton size="small" onClick={() => navigator.clipboard.writeText(`https://.painelftm.com.br`)} sx={{ color: '#7C3AED' }}>
+                              <IconButton size="small" onClick={() => navigator.clipboard.writeText(`https://${site.name}.painelftm.com.br`)} sx={{ color: '#7C3AED' }}>
                                 <WebIcon />
                               </IconButton>
                             </Tooltip>
