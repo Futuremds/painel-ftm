@@ -1,0 +1,176 @@
+const path = require('path');
+const fs = require('fs-extra');
+const { execSync } = require('child_process');
+const axios = require('axios');
+
+const NETLIFY_TOKEN = process.env.NETLIFY_TOKEN;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_OWNER = process.env.GITHUB_OWNER;
+
+console.log('=== DEBUG: deployToVercel.js carregado ===');
+console.log('NETLIFY_TOKEN disponível:', NETLIFY_TOKEN ? 'SIM' : 'NÃO');
+console.log('GITHUB_TOKEN disponível:', GITHUB_TOKEN ? 'SIM' : 'NÃO');
+
+// Função para criar repositório no GitHub
+async function createGitHubRepo(repoName) {
+  try {
+    console.log(`Criando repositório ${repoName} no GitHub...`);
+
+    const response = await axios.post(`https://api.github.com/user/repos`, {
+      name: repoName,
+      private: false,
+      auto_init: false
+    }, {
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const repoData = response.data;
+    console.log('Repositório criado no GitHub:', repoData.html_url);
+    return {
+      url: repoData.html_url,
+      id: repoData.id,
+      name: repoData.name
+    };
+  } catch (error) {
+    console.error('Erro ao criar repositório no GitHub:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// Função para fazer push dos arquivos para o GitHub
+async function pushToGitHub(siteDir, repoName) {
+  try {
+    console.log(`Fazendo push dos arquivos para o repositório ${repoName}...`);
+
+    // Inicializar git no diretório do site
+    execSync('git init', { cwd: siteDir, stdio: 'inherit' });
+    
+    // Adicionar todos os arquivos
+    execSync('git add .', { cwd: siteDir, stdio: 'inherit' });
+    
+    // Fazer commit
+    execSync('git commit -m "Initial commit"', { cwd: siteDir, stdio: 'inherit' });
+    
+    // Adicionar remote do GitHub
+    execSync(`git remote add origin https://github.com/${GITHUB_OWNER}/${repoName}.git`, { 
+      cwd: siteDir, stdio: 'inherit' 
+    });
+    
+    // Fazer push
+    execSync('git push -u origin main', { cwd: siteDir, stdio: 'inherit' });
+    
+    console.log('✅ Push realizado com sucesso para o GitHub!');
+    return {
+      url: `https://github.com/${GITHUB_OWNER}/${repoName}`,
+      id: repoName
+    };
+  } catch (error) {
+    console.error('Erro no push para GitHub:', error.message);
+    throw error;
+  }
+}
+
+// Função para criar site na Netlify conectado ao GitHub
+async function createNetlifySiteFromGitHub(repoName) {
+  try {
+    console.log(`Criando site na Netlify conectado ao repositório ${repoName}...`);
+
+    const response = await axios.post('https://api.netlify.com/api/v1/sites', {
+      name: repoName,
+      repo: {
+        provider: 'github',
+        repo: repoName,
+        owner: GITHUB_OWNER,
+        branch: 'main'
+      }
+    }, {
+      headers: {
+        'Authorization': `Bearer ${NETLIFY_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const siteData = response.data;
+    console.log('Site criado na Netlify:', siteData);
+    return {
+      id: siteData.id,
+      url: siteData.url,
+      custom_domain: siteData.custom_domain
+    };
+  } catch (error) {
+    console.error('Erro ao criar site na Netlify:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// Função principal de deploy para Netlify via GitHub
+const deployToVercel = async (params) => {
+  console.log('Iniciando deploy para Netlify via GitHub...');
+  console.log('Parâmetros:', JSON.stringify(params, null, 2));
+
+  const { siteName, siteDir: customSiteDir } = params;
+
+  if (!NETLIFY_TOKEN) {
+    throw new Error('NETLIFY_TOKEN não está definido nas variáveis de ambiente');
+  }
+
+  if (!GITHUB_TOKEN) {
+    throw new Error('GITHUB_TOKEN não está definido nas variáveis de ambiente');
+  }
+
+  if (!siteName) {
+    throw new Error('O parâmetro siteName é obrigatório para o deploy na Netlify.');
+  }
+
+  const siteDir = customSiteDir || path.resolve(__dirname, '../../generated-sites', siteName);
+  console.log('Diretório do site:', siteDir);
+
+  try {
+    // Verificar se o diretório existe
+    if (!fs.existsSync(siteDir)) {
+      throw new Error(`Diretório do site não encontrado: ${siteDir}`);
+    }
+
+    // Verificar se existe index.html
+    const indexPath = path.join(siteDir, 'index.html');
+    if (!fs.existsSync(indexPath)) {
+      throw new Error(`index.html não encontrado em: ${siteDir}`);
+    }
+
+    // 1. Criar repositório no GitHub
+    const repoInfo = await createGitHubRepo(siteName);
+    console.log('Repositório criado no GitHub:', repoInfo.url);
+
+    // 2. Fazer push dos arquivos para o GitHub
+    const pushResult = await pushToGitHub(siteDir, siteName);
+    console.log('Arquivos enviados para o GitHub:', pushResult.url);
+
+    // 3. Criar site na Netlify conectado ao GitHub
+    const siteInfo = await createNetlifySiteFromGitHub(siteName);
+    console.log('Site criado na Netlify:', siteInfo.url);
+
+    console.log('Deploy iniciado com sucesso na Netlify via GitHub!');
+    console.log('O site será publicado em alguns minutos...');
+    
+    return {
+      data: {
+        id: siteInfo.id,
+        url: siteInfo.url,
+        custom_domain: siteInfo.custom_domain,
+        deploy_url: siteInfo.url,
+        github_url: repoInfo.url
+      }
+    };
+  } catch (error) {
+    console.error('Erro no deploy Netlify via GitHub:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+module.exports = {
+  deployToVercel,
+  pushToGitHub,
+  creat

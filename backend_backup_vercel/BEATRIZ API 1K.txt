@@ -1,0 +1,251 @@
+LINK DO PERFIL: https://m.facebook.com/profile.php?id=61576604152321
+
+NOME: Beatriz de Lima
+
+DATA DE NASCIMENTO: 14/11/1975
+
+SENHA: 1xyj>4%}K6()
+
+
+
+OUTLOOK: beatrizdelima2525@outlook.com
+
+SENHA OUTLOOK: ASHERDIGITAL.COM.BR
+
+
+
+
+
+2FA: GAF7 ZMMZ T5CR W7MA OS4R Y6KN GUFX 2P67
+
+CÓDIGOS DE RECUPERAÇÃO:
+0062 9574
+2092 8026
+3903 0216
+4463 5384
+5970 9839
+
+
+
+COOKIES:
+
+[
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1782694459,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "ps_l",
+        "path": "/",
+        "sameSite": "lax",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "1"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1781887175,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "datr",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "ZRgmaMImQ3bZ6pscPKBAqUoI"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1756653322.482621,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "fr",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "0Wg4YLyrj2q8aSHld.AWcUYCfbGnXXSqfhaLaMXwPf_krclpL5gRm-bu-L8dOhdFM_paw.BoJhhl..AAA.0.0.BoPcAJ.AWdbL90FMXggiYlZHY1S_GODfmA"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1752512013,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "vpd",
+        "path": "/",
+        "sameSite": "lax",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "v1%3B554x360x3"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1779670481,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "xs",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "10%3Ac32R2aiH0w7pag%3A2%3A1747327173%3A-1%3A-1%3Am9vtW53Yxsr6VA"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1778864013,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "fbl_st",
+        "path": "/",
+        "sameSite": "strict",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "101522624%3BT%3A29122133"
+    },
+    {
+        "domain": ".facebook.com",
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "m_pixel_ratio",
+        "path": "/",
+        "sameSite": null,
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "3"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1778863174,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "c_user",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "61576604152321"
+    },
+    {
+        "domain": ".facebook.com",
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "presence",
+        "path": "/",
+        "sameSite": null,
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1748877327903%2C%22v%22%3A1%7D"
+    },
+    {
+        "domain": ".facebook.com",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "ar_debug",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "1"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1755910481,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "b_user",
+        "path": "/",
+        "sameSite": "lax",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "61576580766356"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1748963575,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "cppo",
+        "path": "/",
+        "sameSite": null,
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "1"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1749482154,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "dpr",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "0.8999999761581421"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1782694459,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "ps_n",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "1"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1781887174,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "sb",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "ZRgmaE9NgnfCXmlb8TWj7zK9"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1749482126,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "wd",
+        "path": "/",
+        "sameSite": "lax",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "1517x712"
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1755104012,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "wl_cbv",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "v2%3Bclient_version%3A2819%3Btimestamp%3A1747328012"
+    }
+]

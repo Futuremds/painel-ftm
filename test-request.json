@@ -1,0 +1,21 @@
+{
+    "afiliadoId": "123",
+    "placeholders": {
+        "TITULO_PRINCIPAL": "Dr. João Silva",
+        "OAB_FINAL": "123456",
+        "TELEFONE": "11999999999",
+        "EMAIL": "joao@exemplo.com",
+        "HORARIO_ATENDIMENTO": "Seg a Sex 9h-18h",
+        "AREA_ATUACAO_1": "Direito Civil",
+        "AREA_ATUACAO_2": "Direito do Trabalho",
+        "AREA_ATUACAO_3": "Direito do Consumidor",
+        "AREA_ATUACAO_4": "Direito Previdenciário",
+        "AREA_ATUACAO_5": "Direito Tributário",
+        "AREA_ATUACAO_6": "Direito Empresarial",
+        "DEPOIMENTO_1_NOME": "Maria Santos",
+        "DEPOIMENTO_1_TEXTO": "Excelente profissional",
+        "DEPOIMENTO_2_NOME": "Pedro Oliveira",
+        "DEPOIMENTO_2_TEXTO": "Muito competente",
+        "GOOGLE_MAPS_LINK": "https://maps.google.com"
+    }
+} 

@@ -1,0 +1,332 @@
+cat > deployToVercel.js << 'EOF'
+const path = require('path');
+const fs = require('fs-extra');
+const { execSync } = require('child_process');
+const axios = require('axios');
+
+const NETLIFY_TOKEN = process.env.NETLIFY_TOKEN;
+
+console.log('=== DEBUG: deployToVercel.js carregado ===');
+console.log('NETLIFY_TOKEN disponível:', NETLIFY_TOKEN ? 'SIM' : 'NÃO');
+
+// Variáveis para controle de rate limiting
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 3000; // 3 segundos entre requisições
+
+// Função para aguardar um tempo antes de tentar novamente
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Função para aguardar entre requisições (rate limiting)
+async function waitForRateLimit() {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+    console.log(`⏳ Aguardando ${waitTime}ms para respeitar rate limit...`);
+    await sleep(waitTime);
+  }
+  
+  lastRequestTime = Date.now();
+}
+
+// Função para gerar nome único para o site
+function generateUniqueSiteName(baseName) {
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  return `${baseName}-${timestamp}-${randomSuffix}`;
+}
+
+// Função para buscar site existente na Netlify
+async function findNetlifySite(siteName) {
+  try {
+    await waitForRateLimit(); // Rate limiting
+    console.log(`🔍 Buscando site ${siteName} na Netlify...`);
+
+    const response = await axios.get('https://api.netlify.com/api/v1/sites', {
+      headers: {
+        'Authorization': `Bearer ${NETLIFY_TOKEN}`
+      }
+    });
+
+    const sites = response.data;
+    const site = sites.find(s => s.name === siteName || s.url.includes(siteName));
+
+    if (site) {
+      console.log('✅ Site encontrado na Netlify:', site.url);
+      return {
+        id: site.id,
+        url: site.url,
+        custom_domain: site.custom_domain
+      };
+    } else {
+      console.log('❌ Site não encontrado na Netlify');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Erro ao buscar site na Netlify:', error.response?.data || error.message);
+    return null;
+  }
+}
+
+// Função para criar site na Netlify com rate limiting inteligente
+async function createNetlifySite(siteName, maxRetries = 5) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await waitForRateLimit(); // Rate limiting
+      console.log(`Criando site ${siteName} na Netlify... (tentativa ${attempt}/${maxRetries})`);
+
+      // Validar se o nome do site é válido para a Netlify
+      let cleanName = siteName
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]/g, '')  // Remove caracteres inválidos
+        .replace(/^-+|-+$/g, '')      // Remove hífens do início e fim
+        .replace(/-+/g, '-')          // Múltiplos hífens viram um só
+        .replace(/_+/g, '_');         // Múltiplos underscores viram um só
+
+      // Se após a limpeza o nome estiver vazio, usar o nome original
+      if (!cleanName || cleanName.length < 1) {
+        cleanName = siteName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+
+      // Se ainda estiver vazio, usar um nome padrão
+      if (!cleanName || cleanName.length < 1) {
+        cleanName = 'site-ftm';
+      }
+
+      // Na última tentativa, usar um nome único para evitar conflitos
+      if (attempt === maxRetries) {
+        cleanName = generateUniqueSiteName(cleanName);
+        console.log(`Usando nome único na última tentativa: ${cleanName}`);
+      }
+
+      console.log(`Nome original: ${siteName}`);
+      console.log(`Nome limpo para Netlify: ${cleanName}`);
+
+      const response = await axios.post('https://api.netlify.com/api/v1/sites', {
+        name: cleanName
+      }, {
+        headers: {
+          'Authorization': `Bearer ${NETLIFY_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const siteData = response.data;
+      console.log('✅ Site criado na Netlify:', siteData.url);
+      return {
+        id: siteData.id,
+        url: siteData.url,
+        custom_domain: siteData.custom_domain
+      };
+
+    } catch (error) {
+      console.error(`❌ Erro na tentativa ${attempt}:`, error.response?.data || error.message);
+      
+      if (error.response?.status === 429) {
+        // Rate limiting exponencial backoff
+        const waitTime = Math.min(attempt * 30, 300); // 30s, 60s, 90s, 120s, 150s (máx 5 min)
+        console.log(`⏳ Rate limit atingido. Aguardando ${waitTime} segundos...`);
+        await sleep(waitTime * 1000);
+        
+        // Se for a última tentativa e ainda for rate limit, lançar erro específico
+        if (attempt === maxRetries) {
+          throw new Error('RATE_LIMIT_EXCEEDED: Limite de requisições da API da Netlify atingido. Tente novamente em alguns minutos.');
+        }
+        continue;
+      }
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Para outros erros, aguardar menos tempo
+      const waitTime = Math.min(attempt * 10, 60); // 10s, 20s, 30s, 40s, 50s
+      console.log(`⏳ Aguardando ${waitTime} segundos antes da próxima tentativa...`);
+      await sleep(waitTime * 1000);
+    }
+  }
+  
+  // Se chegou aqui, todas as tentativas falharam
+  throw new Error('Falha ao criar site na Netlify após todas as tentativas');
+}
+
+// Função para criar ZIP dos arquivos do site
+async function createSiteZip(siteDir, siteName) {
+  try {
+    console.log('📦 Criando arquivo ZIP dos arquivos do site...');
+
+    const timestamp = Date.now();
+    const zipFileName = `deploy-${timestamp}.zip`;
+    const zipPath = path.join(siteDir, zipFileName);
+
+    // Criar ZIP com todos os arquivos do site
+    execSync(`zip -r ${zipFileName} . -x "*.git*" "*.zip"`, {
+      cwd: siteDir,
+      stdio: 'inherit'
+    });
+
+    console.log(`✅ ZIP criado: ${zipPath}`);
+    return zipPath;
+  } catch (error) {
+    console.error('❌ Erro ao criar ZIP:', error.message);
+    throw error;
+  }
+}
+
+// Função para fazer deploy do ZIP na Netlify com retry
+async function deployZipToNetlify(zipPath, siteId, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🚀 Fazendo deploy do ZIP na Netlify... (tentativa ${attempt}/${maxRetries})`);
+
+      // Usar curl para fazer upload do ZIP
+      const deployCommand = `curl -H "Authorization: Bearer ${NETLIFY_TOKEN}" -H "Content-Type: application/zip" --data-binary "@${zipPath}" https://api.netlify.com/api/v1/sites/${siteId}/deploys`;
+
+      const result = execSync(deployCommand, {
+        encoding: 'utf8',
+        stdio: 'pipe'
+      });
+
+      const deployData = JSON.parse(result);
+      console.log('✅ Deploy iniciado na Netlify!');
+      console.log('📊 Status do deploy:', deployData.state);
+      console.log('🔗 URL do deploy:', deployData.deploy_url);
+
+      return deployData;
+
+    } catch (error) {
+      console.error(`❌ Erro na tentativa ${attempt}:`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      console.log(`⏳ Aguardando 10 segundos antes da próxima tentativa...`);
+      await sleep(10000);
+    }
+  }
+}
+
+// Função para verificar status do deploy
+async function checkDeployStatus(siteId, deployId) {
+  try {
+    await waitForRateLimit(); // Rate limiting
+    console.log(' Verificando status do deploy...');
+
+    const response = await axios.get(`https://api.netlify.com/api/v1/sites/${siteId}/deploys/${deployId}`, {
+      headers: {
+        'Authorization': `Bearer ${NETLIFY_TOKEN}`
+      }
+    });
+
+    const deployData = response.data;
+    console.log(` Status atual: ${deployData.state}`);
+
+    if (deployData.state === 'ready') {
+      console.log('✅ Deploy concluído com sucesso!');
+      console.log('🌐 Site publicado em:', deployData.deploy_url);
+    } else if (deployData.state === 'error') {
+      console.log('❌ Erro no deploy:', deployData.error_message);
+    } else {
+      console.log('⏳ Deploy ainda em andamento...');
+    }
+
+    return deployData;
+  } catch (error) {
+    console.error('❌ Erro ao verificar status:', error.message);
+    throw error;
+  }
+}
+
+// Função principal de deploy
+async function deployToVercel(params) {
+  try {
+    console.log('🚀 Iniciando deploy direto na Netlify...');
+
+    // Extrair parâmetros
+    const { siteName, siteDir } = params;
+
+    if (!siteName) {
+      throw new Error('siteName é obrigatório');
+    }
+
+    if (!siteDir) {
+      throw new Error('siteDir é obrigatório');
+    }
+
+    console.log('📁 Diretório do site:', siteDir);
+    console.log('🏷️ Nome do site:', siteName);
+
+    // 1. Buscar site existente ou criar novo
+    console.log('\n=== PASSO 1: Verificando site existente ===');
+    let siteData = await findNetlifySite(siteName);
+
+    if (!siteData) {
+      console.log('Site não encontrado, criando novo...');
+      try {
+        siteData = await createNetlifySite(siteName);
+      } catch (createError) {
+        console.error('❌ Erro ao criar site:', createError.message);
+        
+        // Se for rate limit, retornar erro específico
+        if (createError.message.includes('RATE_LIMIT_EXCEEDED')) {
+          return {
+            success: false,
+            error: 'RATE_LIMIT_EXCEEDED: Limite de requisições da API da Netlify atingido. Tente novamente em alguns minutos.'
+          };
+        }
+        
+        throw createError;
+      }
+    }
+
+    // Verificar se siteData foi criado com sucesso
+    if (!siteData || !siteData.id) {
+      throw new Error('Falha ao criar ou obter dados do site na Netlify');
+    }
+
+    // 2. Criar ZIP dos arquivos
+    console.log('\n=== PASSO 2: Criando arquivo ZIP ===');
+    const zipPath = await createSiteZip(siteDir, siteName);
+
+    // 3. Fazer deploy do ZIP
+    console.log('\n=== PASSO 3: Fazendo deploy dos arquivos ===');
+    const deployData = await deployZipToNetlify(zipPath, siteData.id);
+
+    // 4. Verificar status inicial
+    console.log('\n=== PASSO 4: Verificando status inicial ===');
+    await checkDeployStatus(siteData.id, deployData.id);
+
+    // 5. Limpar arquivo ZIP
+    console.log('\n=== PASSO 5: Limpeza ===');
+    fs.removeSync(zipPath);
+    console.log('🧹 Arquivo ZIP removido');
+
+    // 6. Retornar informações do site
+    console.log('\n=== ✅ DEPLOY CONCLUÍDO ===');
+    console.log('🌐 Site URL:', siteData.url);
+    console.log('🔗 Deploy URL:', deployData.deploy_url);
+
+    return {
+      success: true,
+      data: {
+        id: deployData.id,
+        url: siteData.url,
+        custom_domain: siteData.custom_domain,
+        deploy_url: deployData.deploy_url
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Erro no deploy:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+module.exports = { deployToVercel };

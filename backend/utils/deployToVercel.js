@@ -1,0 +1,225 @@
+const path = require('path');
+const fs = require('fs-extra');
+const { execSync } = require('child_process');
+
+console.log('=== DEBUG: deployToVercel.js carregado ===');
+
+// Configurações do domínio
+const DOMAIN = 'site.painelftm.com.br';
+const SITES_DIR = '/var/www/sites';
+const NGINX_SITES_DIR = '/etc/nginx/sites-available';
+const NGINX_ENABLED_DIR = '/etc/nginx/sites-enabled';
+
+// Função para criar nome do subdomínio
+function createSubdomain(siteName) {
+  return siteName
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')  // Remove caracteres inválidos
+    .replace(/^-+|-+$/g, '')      // Remove hífens do início e fim
+    .replace(/-+/g, '-')          // Múltiplos hífens viram um só
+    .substring(0, 50);            // Limita o tamanho
+}
+
+// Função para gerar configuração Nginx
+function generateNginxConfig(subdomain, sitePath) {
+  return `server {
+    listen 80;
+    server_name ${subdomain}.${DOMAIN};
+    
+    root ${sitePath};
+    index index.html index.htm;
+    
+    # Configurações de segurança
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    
+    # Configurações de cache para arquivos estáticos
+    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Configuração principal
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Configurações de segurança adicionais
+    location ~ /\\. {
+        deny all;
+    }
+    
+    # Configurações de compressão
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+}`;
+}
+
+// Função para criar site local
+async function createLocalSite(siteName, siteDir) {
+  try {
+    console.log(`🏗️ Criando site local: ${siteName}`);
+    
+    // 1. Criar nome do subdomínio
+    const subdomain = createSubdomain(siteName);
+    const fullDomain = `${subdomain}.${DOMAIN}`;
+    const sitePath = path.join(SITES_DIR, subdomain);
+    
+    console.log(`📁 Subdomínio: ${subdomain}`);
+    console.log(`🌐 URL completa: ${fullDomain}`);
+    console.log(`📂 Caminho: ${sitePath}`);
+    
+    // 2. Copiar arquivos do site
+    console.log('📋 Copiando arquivos...');
+    await fs.copy(siteDir, sitePath);
+    console.log('✅ Arquivos copiados');
+    
+    // 3. Criar configuração Nginx
+    console.log('⚙️ Criando configuração Nginx...');
+    const nginxConfig = generateNginxConfig(subdomain, sitePath);
+    const nginxConfigPath = path.join(NGINX_SITES_DIR, subdomain);
+    
+    await fs.writeFile(nginxConfigPath, nginxConfig);
+    console.log('✅ Configuração Nginx criada');
+    
+    // 4. Habilitar site no Nginx
+    console.log('🔗 Habilitando site...');
+    const enabledPath = path.join(NGINX_ENABLED_DIR, subdomain);
+    await fs.symlink(nginxConfigPath, enabledPath);
+    console.log('✅ Site habilitado');
+    
+    // 5. Testar configuração Nginx
+    console.log('�� Testando configuração Nginx...');
+    try {
+      execSync('nginx -t', { stdio: 'pipe' });
+      console.log('✅ Configuração Nginx válida');
+    } catch (error) {
+      console.error('❌ Erro na configuração Nginx:', error.message);
+      throw error;
+    }
+    
+    // 6. Recarregar Nginx
+    console.log('�� Recarregando Nginx...');
+    execSync('systemctl reload nginx', { stdio: 'pipe' });
+    console.log('✅ Nginx recarregado');
+    
+    return {
+      success: true,
+      data: {
+        subdomain: subdomain,
+        url: `http://${fullDomain}`,
+        path: sitePath
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro ao criar site local:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Função para verificar se site existe
+async function checkSiteExists(siteName) {
+  try {
+    const subdomain = createSubdomain(siteName);
+    const sitePath = path.join(SITES_DIR, subdomain);
+    const nginxConfigPath = path.join(NGINX_SITES_DIR, subdomain);
+    
+    const siteExists = await fs.pathExists(sitePath);
+    const configExists = await fs.pathExists(nginxConfigPath);
+    
+    if (siteExists && configExists) {
+      return {
+        exists: true,
+        subdomain: subdomain,
+        url: `http://${subdomain}.${DOMAIN}`,
+        path: sitePath
+      };
+    }
+    
+    return { exists: false };
+  } catch (error) {
+    console.error('❌ Erro ao verificar site:', error.message);
+    return { exists: false };
+  }
+}
+
+// Função para atualizar site existente
+async function updateLocalSite(siteName, siteDir) {
+  try {
+    console.log(`🔄 Atualizando site local: ${siteName}`);
+    
+    const subdomain = createSubdomain(siteName);
+    const sitePath = path.join(SITES_DIR, subdomain);
+    
+    // Remover arquivos antigos
+    await fs.remove(sitePath);
+    console.log('🗑️ Arquivos antigos removidos');
+    
+    // Copiar novos arquivos
+    await fs.copy(siteDir, sitePath);
+    console.log('✅ Novos arquivos copiados');
+    
+    return {
+      success: true,
+      data: {
+        subdomain: subdomain,
+        url: `http://${subdomain}.${DOMAIN}`,
+        path: sitePath
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Erro ao atualizar site:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Função principal de deploy
+async function deployToVercel(params) {
+  try {
+    console.log('🚀 Iniciando deploy local...');
+
+    const { siteName, siteDir } = params;
+
+    if (!siteName) {
+      throw new Error('siteName é obrigatório');
+    }
+
+    if (!siteDir) {
+      throw new Error('siteDir é obrigatório');
+    }
+
+    console.log('📁 Diretório do site:', siteDir);
+    console.log('🏷️ Nome do site:', siteName);
+
+    // Verificar se site já existe
+    const existingSite = await checkSiteExists(siteName);
+    
+    if (existingSite.exists) {
+      console.log('🔄 Site já existe, atualizando...');
+      return await updateLocalSite(siteName, siteDir);
+    } else {
+      console.log('🆕 Criando novo site...');
+      return await createLocalSite(siteName, siteDir);
+    }
+
+  } catch (error) {
+    console.error('❌ Erro no deploy:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+module.exports = { deployToVercel };
