@@ -471,7 +471,7 @@ const Dashboard = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>PIRU</TableCell>
+                      <TableCell>Nome do Projeto</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Data</TableCell>
                       <TableCell>Última Edição</TableCell>
