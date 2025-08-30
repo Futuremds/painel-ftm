@@ -307,8 +307,8 @@ const Dashboard = () => {
   };
 
   const handleViewSite = (site) => {
-    // Usar URL do site se disponível, senão usar domínio Netlify
-    const siteUrl = site.url;
+    // Usar domínio personalizado em vez da URL da Netlify
+    const siteUrl = `https://${site.name}.painelftm.com.br`;
     window.open(siteUrl, '_blank');
   };
 
